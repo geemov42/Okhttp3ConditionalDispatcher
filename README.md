@@ -38,11 +38,11 @@ void shouldReturnAResponseFromQueue_whenSendRequestDontMatchConditions() throws 
     conditionalDispatcher
             // Add response for GET method
             .addResponseForMethod(GET, List.of(
-                    this.createConditionalMockResponse(ssin, "99989845")
+                    this.createConditionalMockResponse("get_hasConsent", ssin, "99989845")
             ))
             // Add response in a common response list (http method is not important)
             .addResponse(List.of(
-                    this.createConditionalMockResponse(ssin, "99989845")
+                    this.createConditionalMockResponse("get_hasConsent", ssin, "99989845")
             ))
             // Add response in a queue like a normal situation
             .addResponseInQueue(mockedResponse);
@@ -68,6 +68,13 @@ void shouldReturnAResponseFromQueue_whenSendRequestDontMatchConditions() throws 
 
     Assertions.assertEquals(true, responseMap.get("hasConsent"));
     Assertions.assertEquals(ssin, responseMap.get("personIdentifier"));
+
+    // We can assert on conditional response fetching. You can specify a limit you can use to be sure calls are really waiting for
+    Map<String, ConditionalMockResponse> getMockResponse = conditionalDispatcher.getConditionalMockResponseMapForMethod(GET);
+    Assertions.assertSame(0, getMockResponse.get("get_hasConsent").getFetchCounter());
+
+    Map<String, ConditionalMockResponse> commonMockResponse = conditionalDispatcher.getConditionalMockResponseMapForMethod(GET);
+    Assertions.assertSame(0, getMockResponse.get("get_hasConsent").getFetchCounter());
 }
 
 private ConditionalMockResponse createConditionalMockResponse(String ssin, String parameter) {
