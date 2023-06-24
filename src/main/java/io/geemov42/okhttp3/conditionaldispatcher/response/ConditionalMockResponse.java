@@ -15,17 +15,34 @@ import static java.util.Objects.requireNonNullElseGet;
 
 @Data
 public class ConditionalMockResponse {
+
+    private String id;
+    private int fetchCounter = 0;
+    @Builder.Default
+    private int limitFetch = -1;
+
     private Pattern pathRegexPattern;
     private MockResponse mockResponse;
     @Builder.Default
     private List<MatchingCondition> matchingConditions = new ArrayList<>();
 
     @Builder
-    public ConditionalMockResponse(String pathRegex, MockResponse mockResponse, List<MatchingCondition> matchingConditions) {
+    public ConditionalMockResponse(String id, int limitFetch, String pathRegex, MockResponse mockResponse, List<MatchingCondition> matchingConditions) {
 
+        this.id = requireNonNullAndNotBlank(id);
         requireNonNullAndNotBlank(pathRegex);
         this.pathRegexPattern = Pattern.compile(pathRegex);
         this.mockResponse = requireNonNull(mockResponse).clone();
         this.matchingConditions = requireNonNullElseGet(matchingConditions, Collections::emptyList);
+        this.limitFetch = limitFetch;
+    }
+
+    public void use() {
+        this.fetchCounter++;
+    }
+
+    public MockResponse getMockResponse() {
+        this.use();
+        return this.mockResponse;
     }
 }

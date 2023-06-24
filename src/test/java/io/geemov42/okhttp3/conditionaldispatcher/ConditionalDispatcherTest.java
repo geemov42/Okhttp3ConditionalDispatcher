@@ -19,7 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static io.geemov42.okhttp3.conditionaldispatcher.enums.MethodDispatcherEnum.GET;
+import static io.geemov42.okhttp3.conditionaldispatcher.enums.HttpMethodEnum.COMMON;
+import static io.geemov42.okhttp3.conditionaldispatcher.enums.HttpMethodEnum.GET;
 import static io.geemov42.okhttp3.conditionaldispatcher.enums.RequestPartToTestEnum.PARAMETER;
 
 class ConditionalDispatcherTest {
@@ -44,7 +45,7 @@ class ConditionalDispatcherTest {
 
         ConditionalDispatcher conditionalDispatcher = new ConditionalDispatcher();
         conditionalDispatcher.addResponseForMethod(GET, List.of(
-                this.createConditionalMockResponse(ssin, ssin)
+                this.createConditionalMockResponse("get_hasConsent", ssin, ssin)
         ));
         this.mockWebServer.setDispatcher(conditionalDispatcher);
 
@@ -66,6 +67,9 @@ class ConditionalDispatcherTest {
 
         Assertions.assertEquals(true, responseMap.get("hasConsent"));
         Assertions.assertEquals(ssin, responseMap.get("personIdentifier"));
+
+        Map<String, ConditionalMockResponse> getMockResponse = conditionalDispatcher.getConditionalMockResponseMapForMethod(GET);
+        Assertions.assertSame(1, getMockResponse.get("get_hasConsent").getFetchCounter());
     }
 
     @Test
@@ -75,10 +79,10 @@ class ConditionalDispatcherTest {
 
         ConditionalDispatcher conditionalDispatcher = new ConditionalDispatcher();
         conditionalDispatcher.addResponseForMethod(GET, List.of(
-                        this.createConditionalMockResponse(ssin, "99989845")
+                        this.createConditionalMockResponse("get_hasConsent", ssin, "99989845")
                 ))
                 .addResponse(List.of(
-                        this.createConditionalMockResponse(ssin, ssin)
+                        this.createConditionalMockResponse("get_hasConsent", ssin, ssin)
                 ));
         this.mockWebServer.setDispatcher(conditionalDispatcher);
 
@@ -100,6 +104,12 @@ class ConditionalDispatcherTest {
 
         Assertions.assertEquals(true, responseMap.get("hasConsent"));
         Assertions.assertEquals(ssin, responseMap.get("personIdentifier"));
+
+        Map<String, ConditionalMockResponse> getMockResponse = conditionalDispatcher.getConditionalMockResponseMapForMethod(GET);
+        Assertions.assertSame(0, getMockResponse.get("get_hasConsent").getFetchCounter());
+
+        Map<String, ConditionalMockResponse> commonMockResponse = conditionalDispatcher.getConditionalMockResponseMapForMethod(COMMON);
+        Assertions.assertSame(1, commonMockResponse.get("get_hasConsent").getFetchCounter());
     }
 
     @Test
@@ -116,10 +126,10 @@ class ConditionalDispatcherTest {
 
         ConditionalDispatcher conditionalDispatcher = new ConditionalDispatcher();
         conditionalDispatcher.addResponseForMethod(GET, List.of(
-                        this.createConditionalMockResponse(ssin, "99989845")
+                        this.createConditionalMockResponse("get_hasConsent", ssin, "99989845")
                 ))
                 .addResponse(List.of(
-                        this.createConditionalMockResponse(ssin, "99989845")
+                        this.createConditionalMockResponse("get_hasConsent", ssin, "99989845")
                 ))
                 .addResponseInQueue(mockedResponse);
 
@@ -143,9 +153,15 @@ class ConditionalDispatcherTest {
 
         Assertions.assertEquals(true, responseMap.get("hasConsent"));
         Assertions.assertEquals(ssin, responseMap.get("personIdentifier"));
+
+        Map<String, ConditionalMockResponse> getMockResponse = conditionalDispatcher.getConditionalMockResponseMapForMethod(GET);
+        Assertions.assertSame(0, getMockResponse.get("get_hasConsent").getFetchCounter());
+
+        Map<String, ConditionalMockResponse> commonMockResponse = conditionalDispatcher.getConditionalMockResponseMapForMethod(GET);
+        Assertions.assertSame(0, getMockResponse.get("get_hasConsent").getFetchCounter());
     }
 
-    private ConditionalMockResponse createConditionalMockResponse(String ssin, String parameter) {
+    private ConditionalMockResponse createConditionalMockResponse(String uniqueId, String ssin, String parameter) {
 
         MockResponse mockedResponse = new MockResponse()
                 .setBody(new Gson().toJson(Map.of(
@@ -155,6 +171,7 @@ class ConditionalDispatcherTest {
                 .addHeader("Content-Type", "application/json");
 
         return ConditionalMockResponse.builder()
+                .id(uniqueId)
                 .pathRegex("\\/hasConsent")
                 .mockResponse(mockedResponse)
                 .matchingConditions(List.of(

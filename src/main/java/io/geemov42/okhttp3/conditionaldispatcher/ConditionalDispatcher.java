@@ -1,6 +1,6 @@
 package io.geemov42.okhttp3.conditionaldispatcher;
 
-import io.geemov42.okhttp3.conditionaldispatcher.enums.MethodDispatcherEnum;
+import io.geemov42.okhttp3.conditionaldispatcher.enums.HttpMethodEnum;
 import io.geemov42.okhttp3.conditionaldispatcher.response.MatchingCondition;
 import io.geemov42.okhttp3.conditionaldispatcher.response.ConditionalMockResponse;
 import okhttp3.mockwebserver.Dispatcher;
@@ -11,7 +11,7 @@ import okhttp3.mockwebserver.RecordedRequest;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static io.geemov42.okhttp3.conditionaldispatcher.enums.MethodDispatcherEnum.COMMON;
+import static io.geemov42.okhttp3.conditionaldispatcher.enums.HttpMethodEnum.COMMON;
 import static io.geemov42.okhttp3.conditionaldispatcher.enums.RequestPartToTestEnum.*;
 import static java.util.Objects.isNull;
 import static java.util.Objects.requireNonNull;
@@ -23,7 +23,7 @@ import static java.util.Objects.requireNonNull;
 public class ConditionalDispatcher extends Dispatcher {
 
     private final QueueDispatcher queueDispatcher = new QueueDispatcher();
-    private final Map<MethodDispatcherEnum, List<ConditionalMockResponse>> mockResponseMap = new EnumMap<>(MethodDispatcherEnum.class);
+    private final Map<HttpMethodEnum, List<ConditionalMockResponse>> mockResponseMap = new EnumMap<>(HttpMethodEnum.class);
 
     @Override
     public MockResponse dispatch(RecordedRequest recordedRequest) throws InterruptedException {
@@ -32,7 +32,7 @@ public class ConditionalDispatcher extends Dispatcher {
             return this.queueDispatcher.dispatch(recordedRequest);
         }
 
-        MethodDispatcherEnum requestHttpMethod = MethodDispatcherEnum.valueOf(recordedRequest.getMethod().toUpperCase());
+        HttpMethodEnum requestHttpMethod = HttpMethodEnum.valueOf(recordedRequest.getMethod().toUpperCase());
 
         if (!this.mockResponseMap.containsKey(requestHttpMethod) && !this.mockResponseMap.containsKey(COMMON)) {
             return this.queueDispatcher.dispatch(recordedRequest);
@@ -51,7 +51,7 @@ public class ConditionalDispatcher extends Dispatcher {
         return this.queueDispatcher.dispatch(recordedRequest);
     }
 
-    private Optional<MockResponse> findMockResponseForRequest(MethodDispatcherEnum methodDispatcher, RecordedRequest recordedRequest) {
+    private Optional<MockResponse> findMockResponseForRequest(HttpMethodEnum methodDispatcher, RecordedRequest recordedRequest) {
 
         if (!this.mockResponseMap.containsKey(methodDispatcher) || isNull(recordedRequest.getPath())) {
             return Optional.empty();
@@ -108,7 +108,7 @@ public class ConditionalDispatcher extends Dispatcher {
         return requireNonNull(recordedRequest.getRequestUrl().queryParameter(field));
     }
 
-    public ConditionalDispatcher addResponseForMethod(MethodDispatcherEnum methodDispatcher, List<ConditionalMockResponse> conditionalMockResponses) {
+    public ConditionalDispatcher addResponseForMethod(HttpMethodEnum methodDispatcher, List<ConditionalMockResponse> conditionalMockResponses) {
 
         if (isNull(methodDispatcher) || isNull(conditionalMockResponses)) {
             return this;
@@ -141,5 +141,25 @@ public class ConditionalDispatcher extends Dispatcher {
 
         this.queueDispatcher.enqueueResponse(mockResponse.clone());
         return this;
+    }
+
+    /**
+     * This method will help you to obtain the statistic for a conditional response mock fetch
+     * @param httpMethodEnum
+     * @return
+     */
+    public Map<String, ConditionalMockResponse> getConditionalMockResponseMapForMethod(HttpMethodEnum httpMethodEnum) {
+
+        requireNonNull(httpMethodEnum);
+
+        List<ConditionalMockResponse> conditionalMockResponses = this.mockResponseMap.get(httpMethodEnum);
+
+        if (isNull(conditionalMockResponses)) {
+            return Collections.emptyMap();
+        }
+
+        return conditionalMockResponses.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(ConditionalMockResponse::getId, conditionalMockResponse -> conditionalMockResponse));
     }
 }
