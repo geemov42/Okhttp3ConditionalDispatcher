@@ -77,27 +77,26 @@ void shouldReturnAResponseFromQueue_whenSendRequestDontMatchConditions() throws 
     Assertions.assertSame(0, getMockResponse.get("get_hasConsent").getFetchCounter());
 }
 
-private ConditionalMockResponse createConditionalMockResponse(String ssin, String parameter) {
+private ConditionalMockResponse createConditionalMockResponse(String uniqueId, String ssin, String parameter) {
 
-    // Prepare the response
     MockResponse mockedResponse = new MockResponse()
-            .setBody(new Gson().toJson(Map.of(
-                    "personIdentifier", ssin,
-                    "hasConsent", true
-            ))) //Sample
-            .addHeader("Content-Type", "application/json");
+        .setBody(new Gson().toJson(Map.of(
+            "personIdentifier", ssin,
+            "hasConsent", true
+        ))) //Sample
+        .addHeader("Content-Type", "application/json");
 
-    // Prepare a conditional MockResponse with a condition on the path and another one on a param named personIdentifier
     return ConditionalMockResponse.builder()
+            .id(uniqueId)
             .pathRegex("\\/hasConsent")
             .mockResponse(mockedResponse)
             .matchingConditions(List.of(
-                    MatchingCondition.builder()
-                            .requestPartToTest(PARAMETER)
-                            .valueRegex(parameter)
-                            .field("personIdentifier")
-                            .build()
-            ))
-            .build();
+                MatchingCondition.builder()
+                    .requestPartToTest(PARAMETER)
+                    .valueRegex(parameter)
+                    .field("personIdentifier")
+                    .build()
+                ))
+    .build();
 }
 ```
