@@ -45,4 +45,8 @@ public class ConditionalMockResponse {
         this.use();
         return this.mockResponse;
     }
+
+    public boolean isBeyondOfLimit() {
+        return this.limitFetch > 0 && this.fetchCounter > this.limitFetch;
+    }
 }

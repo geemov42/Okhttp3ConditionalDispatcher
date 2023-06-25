@@ -3,7 +3,7 @@ package io.geemov42.okhttp3.conditionaldispatcher;
 import io.geemov42.okhttp3.conditionaldispatcher.enums.HttpMethodEnum;
 import io.geemov42.okhttp3.conditionaldispatcher.response.MatchingCondition;
 import io.geemov42.okhttp3.conditionaldispatcher.response.ConditionalMockResponse;
-import okhttp3.mockwebserver.Dispatcher;
+import lombok.extern.slf4j.Slf4j;import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.QueueDispatcher;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -20,9 +20,10 @@ import static java.util.Objects.requireNonNull;
  * @author geemov42
  * Transportable class to add mock response with conditions
  */
+@Slf4j
 public class ConditionalDispatcher extends Dispatcher {
 
-    private final QueueDispatcher queueDispatcher = new QueueDispatcher();
+    private QueueDispatcher queueDispatcher = new QueueDispatcher();
     private final Map<HttpMethodEnum, List<ConditionalMockResponse>> mockResponseMap = new EnumMap<>(HttpMethodEnum.class);
 
     @Override
@@ -70,7 +71,20 @@ public class ConditionalDispatcher extends Dispatcher {
 
                     return true;
                 })
-                .map(ConditionalMockResponse::getMockResponse)
+                .map(conditionalMockResponse -> {
+                    MockResponse mockResponse = conditionalMockResponse.getMockResponse();
+
+                    if (conditionalMockResponse.isBeyondOfLimit()) {
+                        log.error("[{}] {} is beyond the limit define {}/{}",
+                                methodDispatcher,
+                                conditionalMockResponse.getId(),
+                                conditionalMockResponse.getFetchCounter(),
+                                conditionalMockResponse.getLimitFetch()
+                        );
+                    }
+
+                    return mockResponse;
+                })
                 .findFirst();
     }
 
@@ -144,7 +158,7 @@ public class ConditionalDispatcher extends Dispatcher {
     }
 
     /**
-     * This method will help you to obtain the statistic for a conditional response mock fetch
+     * This method will help you to obtain conditional mock response to analyze the statistic
      * @param httpMethodEnum
      * @return
      */
@@ -161,5 +175,9 @@ public class ConditionalDispatcher extends Dispatcher {
         return conditionalMockResponses.stream()
                 .filter(Objects::nonNull)
                 .collect(Collectors.toMap(ConditionalMockResponse::getId, conditionalMockResponse -> conditionalMockResponse));
+    }
+
+    public void resetResponseQueue() {
+        this.queueDispatcher = new QueueDispatcher();
     }
 }
