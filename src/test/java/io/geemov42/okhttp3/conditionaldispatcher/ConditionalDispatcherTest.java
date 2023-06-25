@@ -2,7 +2,6 @@ package io.geemov42.okhttp3.conditionaldispatcher;
 
 import com.google.gson.Gson;
 import io.geemov42.okhttp3.conditionaldispatcher.response.ConditionalMockResponse;
-import io.geemov42.okhttp3.conditionaldispatcher.response.MatchingCondition;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -21,7 +20,8 @@ import java.util.Objects;
 
 import static io.geemov42.okhttp3.conditionaldispatcher.enums.HttpMethodEnum.COMMON;
 import static io.geemov42.okhttp3.conditionaldispatcher.enums.HttpMethodEnum.GET;
-import static io.geemov42.okhttp3.conditionaldispatcher.enums.RequestPartToTestEnum.PARAMETER;
+import static io.geemov42.okhttp3.conditionaldispatcher.utils.ConditionalMockResponseHelper.conditionalMockResponse;
+import static io.geemov42.okhttp3.conditionaldispatcher.utils.ConditionalMockResponseHelper.param;
 
 class ConditionalDispatcherTest {
 
@@ -161,7 +161,7 @@ class ConditionalDispatcherTest {
         Assertions.assertSame(0, getMockResponse.get("get_hasConsent").getFetchCounter());
     }
 
-    private ConditionalMockResponse createConditionalMockResponse(String uniqueId, String ssin, String parameter) {
+    private ConditionalMockResponse createConditionalMockResponse(String uniqueId, String ssin, String paramRegex) {
 
         MockResponse mockedResponse = new MockResponse()
                 .setBody(new Gson().toJson(Map.of(
@@ -170,17 +170,7 @@ class ConditionalDispatcherTest {
                 ))) //Sample
                 .addHeader("Content-Type", "application/json");
 
-        return ConditionalMockResponse.builder()
-                .id(uniqueId)
-                .pathRegex("\\/hasConsent")
-                .mockResponse(mockedResponse)
-                .matchingConditions(List.of(
-                        MatchingCondition.builder()
-                                .requestPartToTest(PARAMETER)
-                                .valueRegex(parameter)
-                                .field("personIdentifier")
-                                .build()
-                ))
-                .build();
+        return conditionalMockResponse(uniqueId, "\\/hasConsent", mockedResponse)
+                .addCondition(param("personIdentifier", paramRegex));
     }
 }

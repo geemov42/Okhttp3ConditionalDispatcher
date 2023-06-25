@@ -49,4 +49,22 @@ public class ConditionalMockResponse {
     public boolean isBeyondOfLimit() {
         return this.limitFetch > 0 && this.fetchCounter > this.limitFetch;
     }
+
+    public ConditionalMockResponse addCondition(MatchingCondition matchingCondition) {
+
+        requireNonNull(matchingCondition);
+        this.matchingConditions.add(matchingCondition);
+
+        return this;
+    }
+
+    public ConditionalMockResponse addConditions(MatchingCondition... matchingConditions) {
+        requireNonNull(matchingConditions);
+
+        for (MatchingCondition matchingCondition : matchingConditions) {
+            this.addCondition(matchingCondition);
+        }
+
+        return this;
+    }
 }
