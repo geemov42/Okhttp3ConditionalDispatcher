@@ -5,7 +5,6 @@ import lombok.Data;
 import okhttp3.mockwebserver.MockResponse;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -33,7 +32,7 @@ public class ConditionalMockResponse {
         requireNonNullAndNotBlank(pathRegex);
         this.pathRegexPattern = Pattern.compile(pathRegex);
         this.mockResponse = requireNonNull(mockResponse).clone();
-        this.matchingConditions = requireNonNullElseGet(matchingConditions, Collections::emptyList);
+        this.matchingConditions = requireNonNullElseGet(matchingConditions, ArrayList::new);
         this.limitFetch = limitFetch;
     }
 
