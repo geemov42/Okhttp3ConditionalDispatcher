@@ -1,9 +1,28 @@
+# Global note
+
+Feel free to clone and install to your repository.
+This library will not be installed on maven central because of no maintenance.
+It's a one shot.
+
+# Goal
+
+The goal of this library is to have mock http response based on condition for an external service.
+Okhttp3 support out of the box the queue dispatcher that dispatch simply response in fifo mode.
+
+this dispatcher complete the offer and give the opportunity to respond to dynamic calls.
+
 # Usage
 
 How it works :
-* The dispatcher will search in the more specific list (GET)
-* If not found, it will search in the common list
-* If not found, it use the queueDispatcher to answer
+* The dispatcher will search in the more specific list (based on http method)
+* If the request don't match response conditions, the dispatcher search in common list
+* If the request don't match response conditions, it uses the queueDispatcher to answer
+
+# Code
+
+## initialization
+
+This is the same way of okHttp3 :
 
 ```java
 private MockWebServer mockWebServer;
@@ -18,85 +37,49 @@ void setUp() throws IOException {
 void tearDown() throws IOException {
     this.mockWebServer.shutdown();
 }
+```
 
-@Test
-void shouldReturnAResponseFromQueue_whenSendRequestDontMatchConditions() throws IOException {
+## Conditional dispatcher instance creation
 
-    // False value
-    String ssin = "85047";
+```java
+ConditionalDispatcher conditionalDispatcher = new ConditionalDispatcher();
+```
 
-    // Prepare the response
-    MockResponse mockedResponse = new MockResponse()
-            .setBody(new Gson().toJson(Map.of(
-                    "personIdentifier", ssin,
-                    "hasConsent", true
-            ))) //Sample
-            .addHeader("Content-Type", "application/json");
+it's a simple constructor
 
-    // Create the dispatcher with 3 levels of response
-    ConditionalDispatcher conditionalDispatcher = new ConditionalDispatcher();
-    conditionalDispatcher
-            // Add response for GET method
-            .addResponseForMethod(GET, List.of(
-                    this.createConditionalMockResponse("get_hasConsent", ssin, "99989845")
-            ))
-            // Add response in a common response list (http method is not important)
-            .addResponse(List.of(
-                    this.createConditionalMockResponse("get_hasConsent", ssin, "99989845")
-            ))
-            // Add response in a queue like a normal situation
-            .addResponseInQueue(mockedResponse);
-    
-    this.mockWebServer.setDispatcher(conditionalDispatcher);
+## Conditional response
 
-    // We do a request
-    HttpUrl.Builder urlBuilder = Objects.requireNonNull(HttpUrl.parse(this.mockWebServer.url("/hasConsent").toString())).newBuilder();
-    urlBuilder.addQueryParameter("personIdentifier", ssin);
+It exists 3 methods to filled the dispatcher with response :
+* addResponseForMethod (Add response in method specific list)
+* addResponse (Add response in a common list)
+* addResponseInQueue (Use the queue dispatcher of okHttp3)
 
-    String url = urlBuilder.build().toString();
-    OkHttpClient client = new OkHttpClient.Builder().build();
-    Map<String, Object> responseMap;
+To create a conditional response :
 
-    try (Response response = client.newCall(new Request.Builder()
-                    .url(url)
-                    .build())
-            .execute()) {
-
-        Assertions.assertNotNull(response.body());
-        responseMap = new Gson().fromJson(response.body().string(), Map.class);
-    }
-
-    Assertions.assertEquals(true, responseMap.get("hasConsent"));
-    Assertions.assertEquals(ssin, responseMap.get("personIdentifier"));
-
-    // We can assert on conditional response fetching. You can specify a limit you can use to be sure calls are really waiting for
-    Map<String, ConditionalMockResponse> getMockResponse = conditionalDispatcher.getConditionalMockResponseMapForMethod(GET);
-    Assertions.assertSame(0, getMockResponse.get("get_hasConsent").getFetchCounter());
-
-    Map<String, ConditionalMockResponse> commonMockResponse = conditionalDispatcher.getConditionalMockResponseMapForMethod(GET);
-    Assertions.assertSame(0, getMockResponse.get("get_hasConsent").getFetchCounter());
-}
-
-private ConditionalMockResponse createConditionalMockResponse(String uniqueId, String ssin, String parameter) {
-
-    MockResponse mockedResponse = new MockResponse()
+```java
+// The normal okHttp3 mock response
+MockResponse mockedResponse = new MockResponse()
         .setBody(new Gson().toJson(Map.of(
-            "personIdentifier", ssin,
-            "hasConsent", true
+                "personIdentifier", ssin,
+                "hasConsent", true
         ))) //Sample
         .addHeader("Content-Type", "application/json");
 
-    return ConditionalMockResponse.builder()
-            .id(uniqueId)
-            .pathRegex("\\/hasConsent")
-            .mockResponse(mockedResponse)
-            .matchingConditions(List.of(
-                MatchingCondition.builder()
-                    .requestPartToTest(PARAMETER)
-                    .valueRegex(parameter)
-                    .field("personIdentifier")
-                    .build()
-                ))
-    .build();
-}
+// The conditional mock response with helper methods
+ConditionalMockResponse definition = conditionalMockResponse(uniqueId, "\\/hasConsent", mockedResponse, 1)
+        .addCondition(param("personIdentifier", paramRegex));
+
+// Add response for GET method
+conditionalDispatcher.addResponseForMethod(GET, List.of(definition));
+```
+
+## Assertion
+
+It is important to be sure that the external service is called like we want.
+To be sure of external call, you can assert on conditional mock response fetch count :
+
+```java
+// We can assert on conditional response fetching. You can specify a limit you can use to be sure calls are really waiting for
+Map<String, ConditionalMockResponse> getMockResponse = conditionalDispatcher.getConditionalMockResponseMapForMethod(GET);
+Assertions.assertSame(1, getMockResponse.get("get_hasConsent").getFetchCounter());
 ```

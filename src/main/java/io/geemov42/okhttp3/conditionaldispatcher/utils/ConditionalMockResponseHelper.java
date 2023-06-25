@@ -44,4 +44,14 @@ public class ConditionalMockResponseHelper {
                 .mockResponse(mockedResponse)
                 .build();
     }
+
+    public static ConditionalMockResponse conditionalMockResponse(String uniqueId, String pathRegex, MockResponse mockedResponse, int limitFetch) {
+
+        return ConditionalMockResponse.builder()
+                .id(uniqueId)
+                .limitFetch(limitFetch)
+                .pathRegex(pathRegex)
+                .mockResponse(mockedResponse)
+                .build();
+    }
 }
