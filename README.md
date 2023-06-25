@@ -50,25 +50,51 @@ it's a simple constructor
 ## Conditional response
 
 It exists 3 methods to filled the dispatcher with response :
-* addResponseForMethod (Add response in method specific list)
+* addResponseForMethod (Add response in http method specific list)
 * addResponse (Add response in a common list)
 * addResponseInQueue (Use the queue dispatcher of okHttp3)
 
-To create a conditional response :
+### To create a conditional response
+
+The normal okHttp3 mock response :
 
 ```java
-// The normal okHttp3 mock response
 MockResponse mockedResponse = new MockResponse()
         .setBody(new Gson().toJson(Map.of(
                 "personIdentifier", ssin,
                 "hasConsent", true
         ))) //Sample
         .addHeader("Content-Type", "application/json");
+```
 
-// The conditional mock response with helper methods
+The short way (with helpers) to create a conditional mock response :
+
+```java
 ConditionalMockResponse definition = conditionalMockResponse(uniqueId, "\\/hasConsent", mockedResponse, 1)
         .addCondition(param("personIdentifier", paramRegex));
+```
 
+The long way (just for the example) :
+
+```java
+ConditionalMockResponse definition = ConditionalMockResponse.builder()
+        .id(uniqueId)
+        .limitFetch(limitFetch)
+        .pathRegex(pathRegex)
+        .mockResponse(mockedResponse)
+        .matchingConditions(List.of(
+            MatchingCondition.builder()
+                .requestPartToTest(PARAMETER)
+                .valueRegex(valueRegex)
+                .field(field)
+            .build()
+        ))
+        .build();
+```
+
+And finally add the response to a list :
+
+```java
 // Add response for GET method
 conditionalDispatcher.addResponseForMethod(GET, List.of(definition));
 ```
@@ -83,3 +109,14 @@ To be sure of external call, you can assert on conditional mock response fetch c
 Map<String, ConditionalMockResponse> getMockResponse = conditionalDispatcher.getConditionalMockResponseMapForMethod(GET);
 Assertions.assertSame(1, getMockResponse.get("get_hasConsent").getFetchCounter());
 ```
+
+## Reset
+
+You are not force to reset each time your conditional dispatcher (for optimization purpose), you just need to reset the queue dispatcher.
+To do that, you can use the next method :
+
+```java
+conditionalDispatcherInstance.resetResponseQueue();
+```
+
+And after, populate with new request the queue dispatcher and keep fixed ones.
